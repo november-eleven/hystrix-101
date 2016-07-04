@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>reveal-md</title>
+        <link rel="stylesheet" href="css/reveal.css">
+        <link rel="stylesheet" href="theme/style.css" id="theme">
+        <!-- For syntax highlighting -->
+        <link rel="stylesheet" href="lib/css/monokai-sublime.css">
+
+        <!-- If the query includes 'print-pdf', use the PDF print sheet -->
+        <script>
+          document.write( '<link rel="stylesheet" href="css/print/' + ( window.location.search.match( /print-pdf/gi ) ? 'pdf' : 'paper' ) + '.css" type="text/css" media="print">' );
+        </script>
+    </head>
+    <body>
+
+        <div class="reveal">
+            <div class="slides"><section  data-markdown><script type="text/template"># Hystrix
+
+![Logo](images/0-hystrix-intro.png)
+
+## Prélude
+</script></section><section  data-markdown><script type="text/template">
+## Qui suis-je ?
+
+
+* Thomas LE ROUX
+* Backend & Infrastructure Engineer chez Captain Dash
+* @VenomberVeelen
+</script></section><section  data-markdown><script type="text/template">
+## Résilience
+
+* Désigne la capacité pour un corps, un organisme, une organisation ou un système quelconque à **retrouver ses propriétés initiales** après une altération.
+
+* Capacité d'un écosystème, d'une espèce ou d'un individu à **récupérer facilement** un fonctionnement normal après avoir subi une perturbation.
+
+* Capacité d'un système **à fournir et à maintenir** un service minimum en cas d'attaques, d'incidents, de pannes ou de manques de ressources.
+</script></section><section  data-markdown><script type="text/template">
+### Pourquoi Hystrix ?
+</script></section><section  data-markdown><script type="text/template">
+### Micro Services
+
+![](images/1-service-dependency.png)
+</script></section><section  data-markdown><script type="text/template">
+![](images/2-moto-wrong.gif)
+
+#### Qu'est ce qui peut mal se passer ?
+_Loi de Murphy, vous connaissez ?_
+</script></section><section  data-markdown><script type="text/template">
+### Rien, parce que...
+
+* Le réseau est fiable.
+* Il n'y aurra pas de latence.
+* La bande passante est largement suffissante.
+* Il n'y aurra pas de panne.
+* L'application n'a aucune exception.
+</script></section><section  data-markdown><script type="text/template">
+![](images/3-trollface-meme.jpg)
+</script></section><section  data-markdown><script type="text/template">
+### Quelques chiffres
+
+* **30** services
+* **99.99%** uptime par service
+* **99.7%** uptime sur l'infrastructure _(99.99<sup>30</sup>)_
+* **1 milliards** de requêtes
+* **32 requêtes** par seconde
+* **3 millions** d'erreurs
+* **2+ heures** de pannes par mois
+</script></section><section  data-markdown><script type="text/template">
+![](images/9-srsly.jpg)
+
+### En théorie, la réalité est pire...
+</script></section><section  data-markdown><script type="text/template">
+### Ses principes
+
+* Contrôle des latences et des pannes des dépendances ou sources externes.
+* Stopper les cascades de défaillance dans les systèmes distribués.
+* Échoue vite, en silence, mais récupère rapidement.
+* Dégradation en finesse et solution alternative.
+* Supervision et monitoring en temps _-presque-_ réel.
+</script></section><section  data-markdown><script type="text/template">
+### Ses concepts
+
+* Timeout
+* Circuit Breaker
+* Load shedder
+* Fail fast
+* Isolation
+* Escalation
+* Failover
+* Fallback
+* Retry
+* Recover
+
+<aside class="notes" data-markdown>Jauge + Disjoncteur</aside></script></section><section  data-markdown><script type="text/template">
+# Atelier pratique
+
+![](images/9-holyshit.jpg)
+
+_Assez de théorie, montre moi ton code!_
+</script></section><section  data-markdown><script type="text/template">
+### Hello World
+
+```java
+public class HelloWorldCommand extends HystrixCommand<String> {
+
+    private final String name;
+
+    public CommandHelloWorld(String name) {
+        super(HystrixCommandGroupKey.Factory.asKey("ExampleGroup"));
+        this.name = name;
+    }
+
+    @Override
+    protected String run() {
+        // a real example would do work like a network call here
+        return "Hello " + name + "!";
+    }
+}
+```
+</script></section><section  data-markdown><script type="text/template">
+### Éxecution synchrone
+
+```java
+String s = new HelloWorldCommand("World").execute();
+```
+</script></section><section  data-markdown><script type="text/template">
+### Éxecution asynchrone
+
+```java
+Future<String> fs = new HelloWorldCommand("World").queue();
+
+String s = fs.get();
+```
+</script></section><section  data-markdown><script type="text/template">
+### Éxecution avec ReactiveX
+
+```java
+Observable<String> ho = new HelloWorldCommand("World").observe()
+ho.subscribe(new Observer<String>() {
+
+    @Override
+    public void onCompleted() {
+        // nothing needed here
+    }
+
+    @Override
+    public void onError(Throwable e) {
+        e.printStackTrace();
+    }
+
+    @Override
+    public void onNext(String v) {
+        System.out.println("onNext: " + v);
+    }
+
+});
+```
+
+**Avec Java 8:**
+
+```java
+ho.subscribe((v) -> {
+    System.out.println("onNext: " + v);
+})
+```
+</script></section><section  data-markdown><script type="text/template">
+### Fallback
+
+```java
+public class HelloFailureCommand extends HystrixCommand<String> {
+
+    private final String name;
+
+    public CommandHelloFailure(String name) {
+        super(HystrixCommandGroupKey.Factory.asKey("ExampleGroup"));
+        this.name = name;
+    }
+
+    @Override
+    protected String run() {
+        throw new RuntimeException("this command always fails");
+    }
+
+    @Override
+    protected String getFallback() {
+        return "Hello Failure " + name + "!";
+    }
+}
+```
+</script></section><section  data-markdown><script type="text/template">
+### Comment ça marche ?
+
+![](images/4-hystrix-flow.png)
+</script></section><section  data-markdown><script type="text/template">
+### Quelques exemples
+
+![](images/10-java.jpg)
+</script></section><section  data-markdown><script type="text/template">
+### Échec avec alternative
+
+![](images/6-hystrix-fallback.png)
+</script></section><section  data-markdown><script type="text/template">
+### En silence
+
+```java
+public class ListUserCommand extends HystrixCommand<List<User>> {
+
+    private final long pagination;
+
+    public ListUserCommand(long pagination) {
+        super(HystrixCommandGroupKey.Factory.asKey("Users"));
+        this.pagination = pagination;
+    }
+
+    @Override
+    protected List<User> run() {
+        return DB.users.list(pagination);
+    }
+
+    @Override
+    protected List<User> getFallback() {
+        return new ArrayList<User>(0);
+    }
+}
+```
+</script></section><section  data-markdown><script type="text/template">
+### Par défaut
+
+```java
+public class UserHasAgeRestrictionCommand extends HystrixCommand<Boolean> {
+
+    private final String email;
+
+    public UserHasAgeRestrictionCommand(String email) {
+        super(HystrixCommandGroupKey.Factory.asKey("Users"));
+        this.email = email;
+    }
+
+    @Override
+    protected Boolean run() {
+        return DB.users.hasAgeRestriction(email);
+    }
+
+    @Override
+    protected Boolean getFallback() {
+        return false;
+    }
+}
+```
+</script></section><section  data-markdown><script type="text/template">
+### Chaîner les commandes
+
+![](images/7-hystrix-fallback-wrapper.png)
+</script></section><section  data-markdown><script type="text/template">
+### Service de secours
+
+```java
+public class GetValueCommand extends HystrixCommand<String> {
+
+    private final int id;
+
+    public GetValueCommand(int id) {
+        super(Setter
+            .withGroupKey(HystrixCommandGroupKey.Factory.asKey("RemoteService"))
+            .andCommandKey(HystrixCommandKey.Factory.asKey("GetValueCommand"))
+        );
+        this.id = id;
+    }
+
+}
+```
+</script></section><section  data-markdown><script type="text/template">
+```java
+@Override
+protected String run() {
+    return RemoteServiceClient.getValue(id);
+}
+
+@Override
+protected String getFallback() {
+    return new GetValueFallbackCommand(id).execute();
+}
+```
+</script></section><section  data-markdown><script type="text/template">
+### Service de secours
+
+```java
+class GetValueFallbackCommand extends HystrixCommand<String> {
+
+    private final int id;
+
+    public GetValueFallbackCommand(int id) {
+        super(Setter
+            .withGroupKey(
+                HystrixCommandGroupKey.Factory.asKey("RemoteService")
+            )
+            .andCommandKey(
+                HystrixCommandKey.Factory.asKey("GetValueFallbackCommand")
+            )
+            .andThreadPoolKey(
+                HystrixThreadPoolKey.Factory.asKey("RemoteServiceFallback")
+            )
+        );
+        this.id = id;
+    }
+
+}
+```
+</script></section><section  data-markdown><script type="text/template">
+### Service de secours
+
+```java
+@Override
+protected String run() {
+    MemCacheClient.getValue(id);
+}
+
+@Override
+protected String getFallback() {
+    // the fallback also failed
+    // so this fallback-of-a-fallback will
+    // fail silently and return null
+    return null;
+}
+```
+</script></section><section  data-markdown><script type="text/template">
+### Cache en local
+
+```java
+class GetValueCommand extends HystrixCommand<String> {
+
+    private final CacheApi cache;
+    private final int id;
+
+    public GetValueCommand(CacheApi cache, int id) {
+        super(Setter
+            .withGroupKey(HystrixCommandGroupKey.Factory.asKey("RemoteService"))
+            .andCommandKey(HystrixCommandKey.Factory.asKey("GetValueCommand"))
+        );
+        this.cache = cache;
+        this.id = id;
+    }
+
+}
+```
+</script></section><section  data-markdown><script type="text/template">
+### Cache en local
+
+```java
+@Override
+protected String run() {
+    Sring s = RemoteServiceClient.getValue(id);
+    cache.set(id, s)
+    return s
+}
+
+@Override
+protected String getFallback() {
+    return cache.get(id);
+}
+```
+</script></section><section  data-markdown><script type="text/template">
+### Timeout
+
+```java
+public class LatentResource {
+
+    private final long latency;
+
+    public LatentResource(long latency) {
+        this.latency = ((latency < 0L) ? 0L: latency);
+    }
+
+    public Strig getPayload() {
+        try {
+            Thread.sleep(latency)
+        } catch (InterruptedException e) {
+            // Ignore
+        }
+        return "Some payload";
+    }
+}
+```
+</script></section><section  data-markdown><script type="text/template">
+### Timeout
+
+```java
+public class TimeoutCommand extends HystrixCommand<String> {
+
+    private final LatentResource resource;
+
+    public TimeoutCommand(int timeout, LatentResource resource) {
+        super(Setter
+            .withGroupKey(HystrixCommandGroupKey.Factory.asKey("default"))
+            .addCommandPropertiesDefaults(HystrixCommandProperties.Setter()
+                .withExecutionIsolationThreadTimeoutInMilliseconds(timeout)
+            )
+        );
+        this.resource = resource;
+    }
+
+}
+```
+</script></section><section  data-markdown><script type="text/template">
+### Timeout
+
+```java
+@Override
+protected String run() throws Exception {
+    return resource.getData();
+}
+
+@Override
+protected String getFallback() {
+    return "Resource timed out";
+}
+```
+</script></section><section  data-markdown><script type="text/template">
+### Pour aller plus loin
+
+* Request Caching
+* Request Collapsing
+* Plugins
+  * Event Notifier
+  * Metrics Publisher
+  * Concurrency Strategy
+* Dashboard
+</script></section><section  data-markdown><script type="text/template">
+![](images/8-robin.png)
+
+### Demo avec Robin
+</script></section><section  data-markdown><script type="text/template">
+![](images/11-noway.gif)
+
+### Conclusion
+</script></section></div>
+        </div>
+
+        <script src="lib/js/head.min.js"></script>
+        <script src="js/reveal.js"></script>
+
+        <script>
+            function extend() {
+              var target = {};
+              for (var i = 0; i < arguments.length; i++) {
+                var source = arguments[i];
+                for (var key in source) {
+                  if (source.hasOwnProperty(key)) {
+                    target[key] = source[key];
+                  }
+                }
+              }
+              return target;
+            }
+
+            // Optional libraries used to extend on reveal.js
+            var deps = [
+              { src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+              { src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector('[data-markdown]'); } },
+              { src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector('[data-markdown]'); } },
+              { src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+              { src: 'plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } },
+              { src: 'plugin/math/math.js', async: true }
+            ];
+
+            // default options to init reveal.js
+            var defaultOptions = {
+              controls: true,
+              progress: true,
+              history: true,
+              center: true,
+              transition: 'default',
+              dependencies: deps
+            };
+
+            // options from URL query string
+            var queryOptions = Reveal.getQueryHash() || {};
+
+            var options = {
+  "controls": true,
+  "progress": true,
+  "slideNumber": true
+};
+            options = extend(defaultOptions, options, queryOptions);
+            Reveal.initialize(options);
+        </script>
+        
+    </body>
+</html>
+
