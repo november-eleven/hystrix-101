@@ -6,15 +6,6 @@
 
 ---
 
-## Qui suis-je ?
-
-
-* Thomas LE ROUX
-* Backend & Infrastructure Engineer chez Captain Dash
-* @VenomberVeelen
-
----
-
 ## Résilience
 
 * Désigne la capacité pour un corps, un organisme, une organisation ou un système quelconque à **retrouver ses propriétés initiales** après une altération.
@@ -35,10 +26,7 @@
 
 ---
 
-![](images/2-moto-wrong.gif)
-
-#### Qu'est ce qui peut mal se passer ?
-_Loi de Murphy, vous connaissez ?_
+![](images/2-go-wrong.jpg)
 
 ---
 
@@ -476,12 +464,6 @@ protected String getFallback() {
   * Metrics Publisher
   * Concurrency Strategy
 * Dashboard
-
----
-
-![](images/8-robin.png)
-
-### Demo avec Robin
 
 ---
 
